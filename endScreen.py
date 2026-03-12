@@ -1,85 +1,100 @@
-import random as rand
-import string
-from startScreen import *
+import random
+import pygame
+import sys
+from startScreen import disp_text
 from globals import *
-
-# game end screen function
+from constants import *
+from ui import (draw_background, draw_pill_button, draw_text_shadow,
+                draw_overlay, draw_glow_circle)
 
 
 def game_end(screen, clock, background_color, player_name):
+    """
+    End-of-match screen.  Returns 1 (reset), 2 (menu), or 3 (quit).
+    """
+    hfont = pygame.font.SysFont("segoeui", 80, bold=True)
+    bfont = pygame.font.SysFont("segoeui", 28, bold=True)
+    sfont = pygame.font.SysFont("segoeui", 20)
 
-    celeb_text = pygame.font.Font(os.path.join(auxDirectory, 'MR ROBOT.ttf'), 140)
-    large_text = pygame.font.Font('freesansbold.ttf', 45)
-    small_text = pygame.font.Font('freesansbold.ttf', 30)
+    # Pre-generate some "star" particles
+    stars = [(random.randint(0, width), random.randint(0, height),
+              random.uniform(0.5, 2.5), random.choice(ACCENT_COLORS))
+             for _ in range(40)]
+
+    frame = 0
 
     while True:
-
-        # to smoothly shine winning message
-        delay = 0
-
-        screen.fill(background_color)
-
-        # set flashing colors
-        color_x = rand.randint(0, 4)
-        color_y = rand.randint(0, 1)
-
-        # Get inputs
-        mouse_pos = pygame.mouse.get_pos()
-        mouse_press = pygame.mouse.get_pressed()
+        frame += 1
 
         for event in pygame.event.get():
-            # Press R to reset game
-            if event.type == pygame.KEYDOWN and event.key == pygame.K_r:
-                return 1
-            # Press M to go to menu
-            elif event.type == pygame.KEYDOWN and event.key == pygame.K_m:
-                return 2
-            # Press esc or Q to quit
-            elif event.type == pygame.KEYDOWN and (event.key == pygame.K_q or event.key == pygame.K_ESCAPE):
-                pygame.quit()
-                sys.exit()
-
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_r:
+                    return 1
+                elif event.key == pygame.K_m:
+                    return 2
+                elif event.key in (pygame.K_q, pygame.K_ESCAPE):
+                    pygame.quit(); sys.exit()
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                pygame.quit(); sys.exit()
 
-        # print which player won
-        if delay == 0:
-            disp_text(screen, "{0} WINS".format(string.upper(player_name)), (width / 2, height / 2 - 150),
-                      celeb_text, colors[color_x][color_y])
-        # Drawing buttons for reset, menu and exit.
-        # Reset button
-        if abs(mouse_pos[0] - 200) < buttonRadius and abs(mouse_pos[1] - 470) < buttonRadius:
-            button_circle(screen, colors[0][0], (200, 470), "Reset", large_text, (255, 255, 255),
-                          (width / 2 - 400, height / 2 + 170))
-            if mouse_press[0] == 1:
+        mouse = pygame.mouse.get_pos()
+        click = pygame.mouse.get_pressed()
+
+        draw_background(screen)
+
+        # sparkle particles
+        for i, (sx, sy, spd, sc) in enumerate(stars):
+            sy -= spd
+            if sy < -5:
+                sy = height + 5
+                sx = random.randint(0, width)
+            stars[i] = (sx, sy, spd, sc)
+            alpha = int(120 + 80 * abs(((frame + i * 7) % 60) / 30.0 - 1))
+            r = 2 if spd < 1.5 else 3
+            surf = pygame.Surface((r * 2, r * 2), pygame.SRCALPHA)
+            pygame.draw.circle(surf, (*sc[:3], min(alpha, 255)), (r, r), r)
+            screen.blit(surf, (int(sx) - r, int(sy) - r))
+
+        # winner text with glow
+        color_cycle = ACCENT_COLORS[frame // 8 % len(ACCENT_COLORS)]
+        draw_text_shadow(screen, f"{player_name.upper()} WINS!",
+                         (width // 2, height // 2 - 100), hfont,
+                         color_cycle, shadow_color=(0, 0, 0), offset=4)
+
+        # sub-text
+        sub = sfont.render("Press  R = Reset   M = Menu   Q = Quit", True, UI_DIM)
+        sr = sub.get_rect(center=(width // 2, height // 2 - 20))
+        screen.blit(sub, sr)
+
+        # ─── Buttons ─────────────────────────────────────────────────
+        bw, bh = 150, 48
+        btn_y = height // 2 + 60
+        gap = 30
+
+        total_w = 3 * bw + 2 * gap
+        base_x = width // 2 - total_w // 2
+
+        # Reset
+        if draw_pill_button(screen, (base_x, btn_y, bw, bh),
+                            (20, 140, 60), (30, 200, 80), mouse, bfont,
+                            "RESET", UI_WHITE):
+            if click[0]:
                 return 1
 
-        else:
-            button_circle(screen, colors[0][0], (200, 470), "Reset", small_text, (255, 255, 255),
-                          (width / 2 - 400, height / 2 + 170))
-
-        # Menu button
-        if abs(mouse_pos[0] - 600) < buttonRadius and abs(mouse_pos[1] - 470) < buttonRadius:
-            button_circle(screen, colors[4][1], (600, 470), "Menu", large_text, (255, 255, 255),
-                          (width / 2, height / 2 + 170))
-            if mouse_press[0] == 1:
+        # Menu
+        if draw_pill_button(screen, (base_x + bw + gap, btn_y, bw, bh),
+                            (140, 100, 20), (200, 150, 30), mouse, bfont,
+                            "MENU", UI_WHITE):
+            if click[0]:
                 return 2
 
-        else:
-            button_circle(screen, colors[4][1], (600, 470), "Menu", small_text, (255, 255, 255),
-                          (width / 2, height / 2 + 170))
-
-        # quit button
-        if abs(mouse_pos[0] - 1000) < buttonRadius and abs(mouse_pos[1] - 470) < buttonRadius:
-            button_circle(screen, colors[1][1], (1000, 470), "Quit", large_text, (255, 255, 255),
-                          (width / 2 + 400, height / 2 + 170))
-            if mouse_press[0] == 1:
-                pygame.quit()        
+        # Quit
+        if draw_pill_button(screen, (base_x + 2 * (bw + gap), btn_y, bw, bh),
+                            (140, 30, 30), NEON_RED, mouse, bfont,
+                            "QUIT", UI_WHITE):
+            if click[0]:
+                pygame.quit()
                 return 3
-        else:
-            button_circle(screen, colors[1][0], (1000, 470), "Quit", small_text, (255, 255, 255),
-                          (width / 2 + 400, height / 2 + 170))
 
         pygame.display.update()
-        clock.tick(10)
+        clock.tick(FPS)

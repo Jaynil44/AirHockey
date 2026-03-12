@@ -1,6 +1,7 @@
 import pygame
 import math
 import constants as const
+from ui import draw_glow_circle
 
 
 class Paddle:
@@ -13,10 +14,8 @@ class Paddle:
         self.angle = 0
 
     def check_vertical_bounds(self, height):
-        # top
         if self.y - self.radius <= 0:
             self.y = self.radius
-        # bottom
         elif self.y + self.radius > height:
             self.y = height - self.radius
 
@@ -43,12 +42,14 @@ class Paddle:
         self.angle = math.atan2(dy, dx)
 
     def draw(self, screen, color):
-        position = (int(self.x), int(self.y))
-
-        pygame.draw.circle(screen, color, position, self.radius, 0)
-        pygame.draw.circle(screen, (0, 0, 0), position, self.radius, 2)
-        pygame.draw.circle(screen, (0, 0, 0), position, self.radius - 5, 2)
-        pygame.draw.circle(screen, (0, 0, 0), position, self.radius - 10, 2)
+        pos = (int(self.x), int(self.y))
+        # outer glow
+        draw_glow_circle(screen, color, pos, self.radius, glow_radius=int(self.radius * 2))
+        # inner highlight ring
+        lighter = tuple(min(c + 60, 255) for c in color[:3])
+        pygame.draw.circle(screen, lighter, pos, self.radius - 6, 2)
+        # small center dot
+        pygame.draw.circle(screen, (255, 255, 255, 180), pos, 5)
 
     def get_pos(self):
         return self.x, self.y

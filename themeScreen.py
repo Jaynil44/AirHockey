@@ -1,67 +1,86 @@
 import sys
+import pygame
 from globals import *
+from constants import *
 from startScreen import disp_text
-
-selected_color = theme_colors[0][0]
+from ui import draw_background, draw_glass_panel, draw_pill_button, draw_text_shadow, draw_neon_ring
 
 
 def theme_screen(screen, clock, scr_width, scr_height, music_paused):
-
-    # initialised font
-    smallfont = pygame.font.SysFont("comicsans", 35)
+    """Let the player pick a field accent color. Returns an (R,G,B) tuple."""
+    hfont = pygame.font.SysFont("segoeui", 32, bold=True)
+    bfont = pygame.font.SysFont("segoeui", 22)
+    sfont = pygame.font.SysFont("segoeui", 18)
 
     if not music_paused:
         pygame.mixer.music.play(-1)
         pygame.mixer.music.set_volume(.1)
 
-    while True:
+    selected = 0  # index into THEME_COLORS
 
+    while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
-        screen.fill((60, 90, 100))
+                pygame.quit(); sys.exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    return THEME_COLORS[selected]
 
-        # using the global color which is initialized
-        global selected_color
-
-        # mouse data
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
 
-        # positions of four boxes
-        pos_of_boxes = [[200, 50], [scr_width-500, 50], [200, scr_height / 2 - 50], [scr_width - 500,
-                                                                                     scr_height / 2 - 50]]
+        draw_background(screen)
 
-        # This loop will draw the four boxes
-        i = 0
-        for xy in pos_of_boxes:
-            if (mouse[0] > xy[0]) and (mouse[0] < xy[0] + 300) and (mouse[1] > xy[1]) and (mouse[1] < xy[1] + 150):
-                pygame.draw.rect(screen, theme_colors[i][0], (xy[0], xy[1], 300, 150), 0)  # rect fill
-                if click[0] == 1:
-                    selected_color = theme_colors[i][0]
-            else:
-                pygame.draw.rect(screen, theme_colors[i][1], (xy[0], xy[1], 300, 150), 0)   # rect fill
-            pygame.draw.rect(screen, const.WHITE, (xy[0], xy[1], 300, 150), 2)  # rect border
-            pygame.draw.circle(screen, const.WHITE, (xy[0] + 150, xy[1] + 75), 30, 2)   # middle circle
-            pygame.draw.line(screen, const.WHITE, (xy[0] + 150, xy[1]), (xy[0] + 150, xy[1] + 150), 2)  # middle line
-            pygame.draw.rect(screen, const.WHITE, (xy[0], xy[1] + 30, 50, 95), 2)   # left small rect
-            pygame.draw.rect(screen, const.WHITE, (xy[0] + 300 - 50, xy[1] + 30, 50, 95), 2)    # right small rect
-            i = i+1
+        draw_text_shadow(screen, "CHOOSE FIELD ACCENT", (scr_width // 2, 60),
+                         hfont, NEON_CYAN)
 
-        # displaying the selected color
-        disp_text(screen, "SELECTED COLOR", (width / 2, 450), smallfont, selected_color)
+        # ─── Color cards ─────────────────────────────────────────────
+        card_w, card_h = 200, 200
+        gap = 40
+        total = len(THEME_COLORS) * card_w + (len(THEME_COLORS) - 1) * gap
+        start_x = scr_width // 2 - total // 2
 
-        # start
-        x, y = width / 2 - 50, 500
-        if (mouse[0] > x) and (mouse[0] < x + 90) and (mouse[1] > 500) and (mouse[1] < 530):
-            pygame.draw.rect(screen, colors[0][1], (width / 2 - 50, 500, 90, 30), 0)
-            if click[0] == 1:
-                return selected_color
-        else:
-            pygame.draw.rect(screen, colors[0][0], (width / 2 - 50, 500, 90, 30), 0)
-        text_start = smallfont.render("START", True, const.BLACK)
-        screen.blit(text_start, [width / 2 - 44, 500])
+        for i, tc in enumerate(THEME_COLORS):
+            cx = start_x + i * (card_w + gap)
+            cy = 120
+
+            # mini field preview
+            draw_glass_panel(screen, (cx, cy, card_w, card_h), alpha=25,
+                             border_color=tc if i == selected else UI_DIM)
+
+            # draw mini field lines inside
+            mx, my = cx + card_w // 2, cy + card_h // 2
+            draw_neon_ring(screen, tc, (mx, my), 30, width=1, glow_layers=1)
+            pygame.draw.line(screen, tc, (mx, cy + 20), (mx, cy + card_h - 20), 1)
+            pygame.draw.rect(screen, tc, (cx + 10, my - 30, 30, 60), 1)
+            pygame.draw.rect(screen, tc, (cx + card_w - 40, my - 30, 30, 60), 1)
+
+            # selection ring
+            if i == selected:
+                pygame.draw.rect(screen, tc, (cx - 3, cy - 3, card_w + 6, card_h + 6), 3,
+                                 border_radius=10)
+
+            # click
+            if (cx <= mouse[0] <= cx + card_w) and (cy <= mouse[1] <= cy + card_h):
+                if click[0]:
+                    selected = i
+
+        # selected color indicator
+        sel_color = THEME_COLORS[selected]
+        pygame.draw.circle(screen, sel_color, (scr_width // 2, 370), 20)
+        sel_label = sfont.render("Selected Accent", True, UI_DIM)
+        sr = sel_label.get_rect(center=(scr_width // 2, 400))
+        screen.blit(sel_label, sr)
+
+        # START button
+        bw, bh = 180, 50
+        bx = scr_width // 2 - bw // 2
+        by = scr_height - 110
+        if draw_pill_button(screen, (bx, by, bw, bh),
+                            (20, 140, 60), (30, 200, 80), mouse, hfont,
+                            "START", UI_WHITE):
+            if click[0]:
+                return THEME_COLORS[selected]
 
         pygame.display.update()
-        clock.tick(10)
+        clock.tick(FPS)

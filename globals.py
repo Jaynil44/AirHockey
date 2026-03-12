@@ -12,14 +12,29 @@ paddleHit = None
 goal_whistle = None
 backgroundMusic = None
 
-# image for mute and unmute
-mute_image = pygame.image.load(os.path.join(auxDirectory, 'mute.png'))
-unmute_image = pygame.image.load(os.path.join(auxDirectory, 'unmute.png'))
+# Images – loaded here, but .convert_alpha() called after display init
+_raw_mute   = pygame.image.load(os.path.join(auxDirectory, 'mute.png'))
+_raw_unmute = pygame.image.load(os.path.join(auxDirectory, 'unmute.png'))
+_raw_play   = pygame.image.load(os.path.join(auxDirectory, 'play.png'))
+_raw_pause  = pygame.image.load(os.path.join(auxDirectory, 'pause.png'))
+_raw_info   = pygame.image.load(os.path.join(auxDirectory, 'info.png'))
 
-play_image = pygame.image.load(os.path.join(auxDirectory, 'play.png'))
-pause_image = pygame.image.load(os.path.join(auxDirectory, 'pause.png'))
+# Optimised copies (set in convert_images())
+mute_image = _raw_mute
+unmute_image = _raw_unmute
+play_image = _raw_play
+pause_image = _raw_pause
+info_image = _raw_info
 
-info_image = pygame.image.load(os.path.join(auxDirectory, "info.png"))
+
+def convert_images():
+    """Call AFTER pygame.display.set_mode() to .convert_alpha() all images."""
+    global mute_image, unmute_image, play_image, pause_image, info_image
+    mute_image   = _raw_mute.convert_alpha()
+    unmute_image = _raw_unmute.convert_alpha()
+    play_image   = _raw_play.convert_alpha()
+    pause_image  = _raw_pause.convert_alpha()
+    info_image   = _raw_info.convert_alpha()
 
 
 # game globals.
@@ -29,15 +44,8 @@ screen = None
 # width and height of the screen.
 width, height = const.WIDTH, const.HEIGHT
 
-# button constants
-buttonRadius = 60
-squareSide = 80
-
-# color globals
-# (dimgreen, green) , (dimred, red) , (dimblue, blue ) , (yellow, dimyellow), (orange, dimorange)
-colors = [[(46, 120, 50), (66, 152, 60)], [(200, 72, 72), (255, 92, 92)],
-          [(0, 158, 239), (100, 189, 219)], [(221, 229, 2), (252, 255, 59)],
-          [(232, 114, 46), (244, 133, 51)]]
-
-theme_colors = [[(255, 169, 119), (255, 161, 107)], [(230, 232, 104), (217, 219, 92)],
-                [(125, 216, 201), (103, 178, 166)], [(164, 229, 121), (117, 168, 84)]]
+# ─── Fonts (initialised in main.init()) ─────────────────────────────────────
+title_font = None
+heading_font = None
+body_font = None
+small_font = None

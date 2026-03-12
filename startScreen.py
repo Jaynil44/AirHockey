@@ -1,12 +1,10 @@
 import sys
 import random
+import pygame
 from globals import *
-from constants import MUTE_BUTTON_RADIUS, INFO_BUTTON_RADIUS
-
-x = squareSide+30
-positionGrid = [145, 145+x, 145+2*x, 145+3*x+250, 145+4*x+250, 145+5*x+250]
-
-# function to render font
+from constants import *
+from ui import (draw_background, draw_glass_panel, draw_pill_button,
+                draw_text_shadow, draw_glow_circle, draw_neon_ring)
 
 
 def text_obj(text, font, color):
@@ -14,431 +12,292 @@ def text_obj(text, font, color):
     return text_surface, text_surface.get_rect()
 
 
-# function to render interactive button
-
-
-def button_circle(screen, butt_color, button_pos, text, text_size, text_color,
-                  text_pos):
-    pygame.draw.circle(screen, butt_color, button_pos, buttonRadius)
-    text_surf, text_rect = text_obj(text, text_size, text_color)
-    text_rect.center = text_pos
-    screen.blit(text_surf, text_rect)
-
-
-# function to display text
-
-
-def disp_text(screen, text, center, font_and_size, color):
-    text_surf, text_rect = text_obj(text, font_and_size, color)
+def disp_text(screen, text, center, font, color):
+    text_surf, text_rect = text_obj(text, font, color)
     text_rect.center = center
     screen.blit(text_surf, text_rect)
 
 
-# class of the selection box for color
-
-
-class SelBox:
-    def __init__(self, pid, grid_position):
-        self.playerId = pid
-        self.gridPos = grid_position
-        self.length = squareSide + 10
-        self.breadth = squareSide + 10
-        self.init_gridPos = grid_position
-
-    def move_left(self):
-        if self.init_gridPos+2 >= self.gridPos > self.init_gridPos:
-            self.gridPos -= 1
-
-    def move_right(self):
-        if self.init_gridPos <= self.gridPos < self.init_gridPos+2:
-            self.gridPos += 1
-
-    def draw(self, screen, x, y):
-        pygame.draw.rect(screen, (255, 255, 255),
-                         (x, y, self.length, self.breadth))
-
-
-# INFO
-# This functions renders a in-game help
-
-
+# ─── Help screen ─────────────────────────────────────────────────────────────
 def show_info(screen, scr_width, clock):
+    hfont = pygame.font.SysFont("segoeui", 32, bold=True)
+    bfont = pygame.font.SysFont("segoeui", 22)
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
-        screen.fill((60, 90, 100))
-        main_text = pygame.font.Font('freesansbold.ttf', 35)
-        other_text = pygame.font.Font('freesansbold.ttf', 25)
 
-        game_play = main_text.render('HELP', True, colors[0][1])
-        screen.blit(game_play, (550, 70))
+        draw_background(screen)
 
-        line = other_text.render("CONTROLS:-", True, const.WHITE)
-        screen.blit(line, (130, 130))
-        line = other_text.render("PLAYER 1 :- W,A,S,D     PLAYER 2 :- Arrow keys", True, const.WHITE)
-        screen.blit(line, (290, 170))
+        draw_text_shadow(screen, "HOW TO PLAY", (scr_width // 2, 60), hfont, NEON_CYAN)
 
-        line = other_text.render("1. Click on player 1 or player 2 to enter name.", True, const.WHITE)
-        screen.blit(line, (100, 220))
-
-        line = other_text.render("2. Choose each player's paddle color at the title screen.", True, const.WHITE)
-        screen.blit(line, (100,  260))
-
-        line = other_text.render("3. To start playing, click on the difficulty level.", True, const.WHITE)
-        screen.blit(line, (100, 300))
-
-        line = other_text.render("4. Each game comprises of three rounds, and the player who wins ", True, const.WHITE)
-        screen.blit(line, (100, 350))
-        line = other_text.render("two (or more) rounds is the winner.", True, const.WHITE)
-        screen.blit(line, (130, 390))
-
-        line = other_text.render("5. During playtime, game can be paused anytime by pressing SpaceBar ", True,
-                                 const.WHITE)
-        screen.blit(line, (100, 440))
-        line = other_text.render("or clicking the pause icon on the screen.", True, const.WHITE)
-        screen.blit(line, (130, 480))
+        lines = [
+            "CONTROLS:",
+            "  Player 1 →  W  A  S  D         Player 2 →  Arrow keys",
+            "",
+            "1. Click player name fields to type a name.",
+            "2. Choose each player's paddle color.",
+            "3. Select difficulty to start.",
+            "4. First to 5 goals wins a round. Best of 3 rounds.",
+            "5. Press SPACE or click ⏸  to pause anytime.",
+        ]
+        y = 120
+        for line in lines:
+            txt = bfont.render(line, True, UI_WHITE)
+            screen.blit(txt, (100, y))
+            y += 36
 
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
 
-        # Back Button
-        if abs(mouse[0] - scr_width / 2 - 50) < 120 and abs(mouse[1] - 550) < 40:
-            pygame.draw.rect(screen, colors[2][1], (scr_width / 2 - 50, 520, 90, 30))
-            if click[0] == 1:
+        bw, bh = 120, 40
+        bx = scr_width // 2 - bw // 2
+        by = height - 80
+        if draw_pill_button(screen, (bx, by, bw, bh), (0, 160, 200), NEON_CYAN,
+                            mouse, bfont, "BACK", BLACK):
+            if click[0]:
                 return
-        else:
-            pygame.draw.rect(screen, colors[2][0], (scr_width / 2 - 50, 520, 90, 30))
 
-        back = other_text.render("BACK", True, const.BLACK)
-        screen.blit(back, (scr_width / 2 - 40, 525))
         pygame.display.flip()
-        clock.tick(10)
+        clock.tick(FPS)
 
 
-# function for creating a start screen
-
-
+# ─── Start screen ────────────────────────────────────────────────────────────
 def air_hockey_start(screen, clock, scr_width, scr_height, mute):
-
     pygame.mixer.music.load(os.path.join(auxDirectory, 'StartScreenBack.mp3'))
     pygame.mixer.music.play(-1)
     pygame.mixer.music.set_volume(.1)
 
-    # Variables set to none initially
-    p1_color_select = 1     # used to store present color's
-    p2_color_select = 1    # position in the matrix
-    player1_color = colors[p1_color_select][1]  # Default colors of the
-    player2_color = colors[p2_color_select][1]  # player paddles
-    sel_p1 = SelBox(1, 0)        # Default boxes selected
-    sel_p2 = SelBox(2, 3)        # for players's color
-    player_1_key = False     # this is used to carry over mouse event if player 1 name box is clicked after player 2
-
-    music_paused = False  # to check if music is playing or paused
-
-    # player names
+    # ─ state ─
+    p1_idx = 0
+    p2_idx = 1
     player_1_name = ""
     player_2_name = ""
+    editing_p1 = False
+    editing_p2 = False
+    player_1_key = False
+    music_paused = False
+
+    # ─ fonts (cached) ─
+    tfont  = pygame.font.SysFont("segoeui", 60, bold=True)
+    hfont  = pygame.font.SysFont("segoeui", 26, bold=True)
+    bfont  = pygame.font.SysFont("segoeui", 24)
+    sfont  = pygame.font.SysFont("segoeui", 18)
+
+    blink_timer = 0
 
     while True:
+        dt = clock.tick(FPS)
+        blink_timer = (blink_timer + dt) % 1000
+        blink_on = blink_timer < 500
+
+        # ─── events ─────────────────────────────────────────────────
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                pygame.quit()
-                sys.exit()
+                pygame.quit(); sys.exit()
 
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_q:
-                    pygame.quit()
-                    sys.exit()
+                if event.key == pygame.K_q and not editing_p1 and not editing_p2:
+                    pygame.quit(); sys.exit()
 
-                # player 1 controls: move highlight with a and d
-                elif event.key == pygame.K_a:
-                    if p1_color_select > 1:
-                        p1_color_select -= 1
-                    sel_p1.move_left()
+                # typing into name fields
+                if editing_p1:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
+                        editing_p1 = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        player_1_name = player_1_name[:-1]
+                    elif event.unicode.isalnum() and len(player_1_name) < 10:
+                        player_1_name += event.unicode
+                    continue
+
+                if editing_p2:
+                    if event.key == pygame.K_RETURN or event.key == pygame.K_ESCAPE:
+                        editing_p2 = False
+                    elif event.key == pygame.K_BACKSPACE:
+                        player_2_name = player_2_name[:-1]
+                    elif event.unicode.isalnum() and len(player_2_name) < 10:
+                        player_2_name += event.unicode
+                    continue
+
+                # color cycle
+                if event.key == pygame.K_a:
+                    p1_idx = (p1_idx - 1) % len(ACCENT_COLORS)
                 elif event.key == pygame.K_d:
-                    if p1_color_select < 3:
-                        p1_color_select += 1
-                    sel_p1.move_right()
-
-                # player 2 controls: move highlight with left and right
+                    p1_idx = (p1_idx + 1) % len(ACCENT_COLORS)
                 elif event.key == pygame.K_LEFT:
-                    if p2_color_select > 1:
-                        p2_color_select -= 1
-                    sel_p2.move_left()
+                    p2_idx = (p2_idx - 1) % len(ACCENT_COLORS)
                 elif event.key == pygame.K_RIGHT:
-                    if p2_color_select < 3:
-                        p2_color_select += 1
-                    sel_p2.move_right()
-
-                # selecting easy mode with 'e' button
+                    p2_idx = (p2_idx + 1) % len(ACCENT_COLORS)
                 elif event.key == pygame.K_e:
-                    if player_1_name is "":
-                        player_1_name = "Player 1"
-                    if player_2_name is "":
-                        player_2_name = "Player 2"
-                    return 1, player1_color, player2_color, mute, player_1_name, player_2_name
-                # selecting hard mode with 'h' button
+                    n1 = player_1_name or "Player 1"
+                    n2 = player_2_name or "Player 2"
+                    _stop_music(music_paused)
+                    return 1, ACCENT_COLORS[p1_idx], ACCENT_COLORS[p2_idx], mute, n1, n2
                 elif event.key == pygame.K_h:
-                    if player_1_name is "":
-                        player_1_name = "Player 1"
-                    if player_2_name is "":
-                        player_2_name = "Player 2"
-                    return 2, player1_color, player2_color, mute, player_1_name, player_2_name
+                    n1 = player_1_name or "Player 1"
+                    n2 = player_2_name or "Player 2"
+                    _stop_music(music_paused)
+                    return 2, ACCENT_COLORS[p1_idx], ACCENT_COLORS[p2_idx], mute, n1, n2
 
-        screen.fill((60, 90, 100))
-        celeb_text = pygame.font.Font(os.path.join(auxDirectory, 'Jelly Crazies.ttf'), 70)
-        large_text = pygame.font.Font('freesansbold.ttf', 50)
-        small_text = pygame.font.Font('freesansbold.ttf', 30)
-        color_x = random.randint(0, 4)
-        color_y = random.randint(0, 1)
-        disp_text(screen, "AIRHOCKEY", (scr_width / 2, 100), celeb_text, colors[color_x][color_y])
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                mx, my = event.pos
+                # name field click detection
+                p1_box = (scr_width // 4 - 140, 200, 280, 44)
+                p2_box = (3 * scr_width // 4 - 140, 200, 280, 44)
+                if p1_box[0] <= mx <= p1_box[0] + p1_box[2] and p1_box[1] <= my <= p1_box[1] + p1_box[3]:
+                    editing_p1 = True; editing_p2 = False
+                elif p2_box[0] <= mx <= p2_box[0] + p2_box[2] and p2_box[1] <= my <= p2_box[1] + p2_box[3]:
+                    editing_p2 = True; editing_p1 = False
+                else:
+                    editing_p1 = False; editing_p2 = False
 
-        # mute and unmute audio code
-        if mute and (not music_paused):
-            pygame.mixer.music.pause()
-            music_paused = True
-        elif (not mute) and music_paused:
-            pygame.mixer.music.unpause()
-            music_paused = False
+        # ─── mute logic ─────────────────────────────────────────────
+        if mute and not music_paused:
+            pygame.mixer.music.pause(); music_paused = True
+        elif not mute and music_paused:
+            pygame.mixer.music.unpause(); music_paused = False
 
-        # mouse data
+        # ─── draw ────────────────────────────────────────────────────
         mouse = pygame.mouse.get_pos()
         click = pygame.mouse.get_pressed()
 
-        # choose colors for paddle
+        draw_background(screen)
 
-        x_pos_rect_left = 150
-        y_pos_rect_left = scr_height/2 - 70
+        # Title
+        draw_text_shadow(screen, "AIR HOCKEY", (scr_width // 2, 80), tfont,
+                         NEON_CYAN, shadow_color=(0, 80, 120), offset=3)
 
-        x_pos_rect_right = scr_width - 150 - 320
-        y_pos_rect_right = scr_height/2 - 70
+        # ─── Player cards ────────────────────────────────────────────
+        card_w, card_h = 320, 260
+        p1_cx = scr_width // 4
+        p2_cx = 3 * scr_width // 4
 
-        # Color picking pallete for player 1 (Left)
+        for pidx, (cx, p_name, p_color_idx, is_editing) in enumerate([
+            (p1_cx, player_1_name, p1_idx, editing_p1),
+            (p2_cx, player_2_name, p2_idx, editing_p2),
+        ]):
+            lx = cx - card_w // 2
+            ly = 140
+            draw_glass_panel(screen, (lx, ly, card_w, card_h), alpha=30,
+                             border_color=ACCENT_COLORS[p_color_idx])
 
-        # white border line
-        pygame.draw.rect(screen, (255, 255, 255), (x_pos_rect_left - 10, y_pos_rect_left - 10, 320, 100), 1)
-        # Draw selection box
-        sel_p1.draw(screen, positionGrid[sel_p1.gridPos], y_pos_rect_left - 5)
-        sel_p2.draw(screen, positionGrid[sel_p2.gridPos], y_pos_rect_left - 5)
+            # label
+            label = f"PLAYER {pidx + 1}"
+            draw_text_shadow(screen, label, (cx, ly + 30), hfont, UI_WHITE)
 
-        # using only three color options back
-        for x in range(1, 4):
-            if (mouse[0] > x_pos_rect_left) and (mouse[0] < x_pos_rect_left + squareSide) and \
-                    (mouse[1] > y_pos_rect_left) and (mouse[1] < (y_pos_rect_left + squareSide)):
-                pygame.draw.rect(screen, colors[x][0], (x_pos_rect_left, y_pos_rect_left, squareSide, squareSide))
-                if click[0] == 1:
-                    p1_color_select = x
+            # name field
+            fx, fy, fw, fh = cx - 140, ly + 55, 280, 44
+            border_c = NEON_CYAN if is_editing else UI_DIM
+            pygame.draw.rect(screen, (20, 20, 40), (fx, fy, fw, fh), border_radius=6)
+            pygame.draw.rect(screen, border_c, (fx, fy, fw, fh), 2, border_radius=6)
 
-                    # updating sel_p1.gridPos to draw after display update
-                    sel_p1.gridPos = x-1
+            display_name = p_name
+            if is_editing:
+                display_name = p_name + ("|" if blink_on else "")
+            if not display_name:
+                # placeholder
+                ph = sfont.render("Click to type name...", True, UI_DIM)
+                screen.blit(ph, (fx + 10, fy + 12))
             else:
-                pygame.draw.rect(screen, colors[x][1], (x_pos_rect_left, y_pos_rect_left, squareSide, squareSide))
-            x_pos_rect_left = x_pos_rect_left + squareSide + 30
+                nt = bfont.render(display_name, True, UI_WHITE)
+                screen.blit(nt, (fx + 10, fy + 9))
 
-        player1_color = colors[p1_color_select][1]
+            # color swatches
+            swatch_y = ly + 135
+            total_w = len(ACCENT_COLORS) * 40 + (len(ACCENT_COLORS) - 1) * 12
+            start_x = cx - total_w // 2 + 20
+            for ci, ac in enumerate(ACCENT_COLORS):
+                sx = start_x + ci * 52
+                if ci == p_color_idx:
+                    draw_neon_ring(screen, ac, (sx, swatch_y), 22, width=2, glow_layers=2)
+                pygame.draw.circle(screen, ac, (sx, swatch_y), 16)
+                # click detection
+                if click[0]:
+                    dx = mouse[0] - sx
+                    dy = mouse[1] - swatch_y
+                    if dx * dx + dy * dy < 20 * 20:
+                        if pidx == 0:
+                            p1_idx = ci
+                        else:
+                            p2_idx = ci
 
-        # color picking palette for player 2(Right)
+            # selected label
+            sel_text = sfont.render("A / D to cycle" if pidx == 0 else "← / → to cycle",
+                                   True, UI_DIM)
+            sr = sel_text.get_rect(center=(cx, swatch_y + 40))
+            screen.blit(sel_text, sr)
 
-        # white border Line
-        pygame.draw.rect(screen, (255, 255, 255), (x_pos_rect_right-10, y_pos_rect_right-10, 320, 100), 1)
+            # preview paddle
+            preview_color = ACCENT_COLORS[p_color_idx]
+            draw_glow_circle(screen, preview_color, (cx, ly + 220), 18,
+                             glow_radius=30)
 
-        # using only three color options
-        for x in range(1, 4):
-            if (mouse[0] > x_pos_rect_right) and (mouse[0] < (x_pos_rect_right + squareSide)) and \
-                    (mouse[1] > y_pos_rect_right) and (mouse[1] < (y_pos_rect_right + squareSide)):
-                pygame.draw.rect(screen, colors[x][0], (x_pos_rect_right, y_pos_rect_right, squareSide, squareSide))
-                if click[0] == 1:
-                    p2_color_select = x
+        # ─── Difficulty buttons ──────────────────────────────────────
+        btn_w, btn_h = 160, 50
+        btn_y = scr_height - 120
 
-                    # updating sel_p2.gridPos to draw after display update
-                    sel_p2.gridPos = x-1 + 3
-            else:
-                pygame.draw.rect(screen, colors[x][1], (x_pos_rect_right, y_pos_rect_right, squareSide, squareSide))
-            x_pos_rect_right = x_pos_rect_right + squareSide + 30
+        # Easy
+        easy_x = scr_width // 2 - btn_w - 30
+        easy_hover = draw_pill_button(screen, (easy_x, btn_y, btn_w, btn_h),
+                                      (20, 140, 60), (30, 200, 80), mouse, hfont,
+                                      "EASY", UI_WHITE)
+        if easy_hover and click[0]:
+            n1 = player_1_name or "Player 1"
+            n2 = player_2_name or "Player 2"
+            _stop_music(music_paused)
+            return 1, ACCENT_COLORS[p1_idx], ACCENT_COLORS[p2_idx], mute, n1, n2
 
-        player2_color = colors[p2_color_select][1]
+        # Hard
+        hard_x = scr_width // 2 + 30
+        hard_hover = draw_pill_button(screen, (hard_x, btn_y, btn_w, btn_h),
+                                      (180, 50, 20), (240, 80, 30), mouse, hfont,
+                                      "HARD", UI_WHITE)
+        if hard_hover and click[0]:
+            n1 = player_1_name or "Player 1"
+            n2 = player_2_name or "Player 2"
+            _stop_music(music_paused)
+            return 2, ACCENT_COLORS[p1_idx], ACCENT_COLORS[p2_idx], mute, n1, n2
 
-        # displaying the color selected
+        # ─── Quit button (bottom right) ─────────────────────────────
+        quit_w, quit_h = 100, 38
+        quit_x = scr_width - quit_w - 30
+        quit_y_pos = scr_height - 55
+        quit_hover = draw_pill_button(screen, (quit_x, quit_y_pos, quit_w, quit_h),
+                                      (120, 30, 30), NEON_RED, mouse, sfont,
+                                      "QUIT", UI_WHITE)
+        if quit_hover and click[0]:
+            pygame.quit(); sys.exit()
 
-        disp_text(screen, "Color Selected", (scr_width / 4, y_pos_rect_left + 120), small_text, player1_color)
-        disp_text(screen, "Color selected", (scr_width - scr_width/4 - 20, y_pos_rect_left + 120),
-                  small_text, player2_color)
-
-        # difficulty button 'Easy'
-        if abs(mouse[0] - 200) < buttonRadius and abs(mouse[1] - 470) < buttonRadius:
-            button_circle(screen, colors[0][0], (200, 470), "Easy", large_text, (255, 255, 255),
-                          (scr_width / 2 - 400, scr_height / 2 + 170))
-            if click[0] == 1:
-                if music_paused:
-                    pygame.mixer.music.unpause()
-                pygame.mixer.music.stop()
-                if player_1_name is "":
-                    player_1_name = "Player 1"
-                if player_2_name is "":
-                    player_2_name = "Player 2"
-                return 1, player1_color, player2_color, mute, player_1_name, player_2_name
-
-        else:
-            button_circle(screen, colors[0][0], (200, 470), "Easy", small_text, (255, 255, 255),
-                          (scr_width / 2 - 400, scr_height / 2 + 170))
-
-        # difficulty button 'Hard'
-        if abs(mouse[0] - 600) < buttonRadius and abs(mouse[1] - 470) < buttonRadius:
-            button_circle(screen, colors[4][1], (600, 470), "Hard", large_text, (255, 255, 255),
-                          (scr_width / 2, scr_height / 2 + 170))
-            if click[0] == 1:
-                if music_paused:
-                    pygame.mixer.music.unpause()
-                pygame.mixer.music.stop()
-                if player_1_name is "":
-                    player_1_name = "Player 1"
-                if player_2_name is "":
-                    player_2_name = "Player 2"
-                return 2, player1_color, player2_color, mute, player_1_name, player_2_name
-
-        else:
-            button_circle(screen, colors[4][1], (600, 470), "Hard", small_text, (255, 255, 255),
-                          (scr_width / 2, scr_height / 2 + 170))
-
-        # quit button
-        if abs(mouse[0] - 1000) < buttonRadius and abs(mouse[1] - 470) < buttonRadius:
-            button_circle(screen, colors[1][1], (1000, 470), "Quit", large_text, (255, 255, 255),
-                          (scr_width / 2 + 400, scr_height / 2 + 170))
-            if click[0] == 1:
-                pygame.quit()
-                sys.exit()
-        else:
-            button_circle(screen, colors[1][0], (1000, 470), "Quit", small_text, (255, 255, 255),
-                          (scr_width / 2 + 400, scr_height / 2 + 170))
-
-        # info button
-        screen.blit(info_image, (40, 20))
-        if abs(mouse[0] - (40 + 32)) < INFO_BUTTON_RADIUS and abs(mouse[1] - (20 + 32)) < INFO_BUTTON_RADIUS:
-            if click[0] == 1:
+        # ─── Info button (bottom left) ───────────────────────────────
+        info_r = 18
+        info_cx, info_cy = 40, scr_height - 36
+        pygame.draw.circle(screen, UI_DIM, (info_cx, info_cy), info_r, 2)
+        it = sfont.render("?", True, UI_WHITE)
+        ir = it.get_rect(center=(info_cx, info_cy))
+        screen.blit(it, ir)
+        if click[0]:
+            dx = mouse[0] - info_cx
+            dy = mouse[1] - info_cy
+            if dx * dx + dy * dy < (info_r + 5) ** 2:
                 show_info(screen, scr_width, clock)
 
-        # mute status toggle using mouse
-        if abs(mouse[0] - (width - 100 + 32)) < MUTE_BUTTON_RADIUS and abs(mouse[1] - (20 + 32)) < MUTE_BUTTON_RADIUS \
-                and click[0] == 1:
-            mute = not mute
-
-        # displaying mute and unmute button
+        # ─── Mute button (top right) ─────────────────────────────────
+        mute_cx = scr_width - 40
+        mute_cy = 36
         if mute:
-            screen.blit(mute_image, (width - 100, 20))
+            screen.blit(mute_image, (mute_cx - 16, mute_cy - 16))
         else:
-            screen.blit(unmute_image, (width - 100, 20))
+            screen.blit(unmute_image, (mute_cx - 16, mute_cy - 16))
+        if click[0]:
+            dx = mouse[0] - mute_cx
+            dy = mouse[1] - mute_cy
+            if dx * dx + dy * dy < MUTE_BUTTON_RADIUS ** 2:
+                mute = not mute
 
-        # player 1 and player 2 name box dimensions
-        x1, y1 = 140, 170
-        x2, y2 = scr_width / 2 + 120, 170
-        pygame.draw.rect(screen, const.WHITE, (x2, y2, 320, 50), 1)
+        pygame.display.flip()
 
-        # box for player2's name
-        if player_2_name is "":
-            player_2_text = small_text.render("Player 2 Name", True, const.WHITE)
-        else:
-            player_2_text = small_text.render(player_2_name, True, const.WHITE)
-        screen.blit(player_2_text, [x2 + 10, y2 + 10])
 
-        if ((mouse[0] > x1) and (mouse[0] < x1 + 320) and (mouse[1] > y1) and (mouse[1] < y1 + 50)) or player_1_key:
-            if click[0] == 1 or player_1_key:
-                ret = 0
-                blink = 0
-                while True:
-
-                    mouse = pygame.mouse.get_pos()
-                    click = pygame.mouse.get_pressed()
-
-                    color_x = random.randint(0, 4)
-                    color_y = random.randint(0, 1)
-                    disp_text(screen, "AIRHOCKEY", (scr_width / 2, 100), celeb_text, colors[color_x][color_y])
-
-                    # blink
-                    if blink:
-                        blink_ch = "|"
-                        blink = 0
-                    else:
-                        blink_ch = ""
-                        blink = 1
-                    if mouse[0] < x1 or mouse[0] > x1 + 320 or mouse[1] < y1 or mouse[1] > y1 + 50:
-                        if click[0] == 1:
-                            ret = 1
-                            player_1_key = False
-                    if ret:
-                        break
-                    for event in pygame.event.get():
-                        if event.type == pygame.locals.QUIT:
-                            sys.exit()
-                        if event.type == pygame.locals.KEYDOWN:
-                            if event.unicode.isalpha() and not (len(player_1_name) > 8):
-                                player_1_name = "{}{}".format(player_1_name, event.unicode)
-                            elif event.key == pygame.locals.K_BACKSPACE:
-                                player_1_name = player_1_name[:-1]
-                            elif event.key == pygame.locals.K_RETURN:
-                                ret = 1
-                                player_1_key = False
-                    pygame.draw.rect(screen, const.WHITE, (x1, y1, 320, 50), 0)
-                    if not (player_1_name is ""):
-                        player_1_text = small_text.render("{0}{1}".format(player_1_name, blink_ch), True, const.BLACK)
-                        screen.blit(player_1_text, [150, 180])
-                    pygame.display.flip()
-                    clock.tick(10)
-
-        # box for player1's name
-        pygame.draw.rect(screen, (60, 90, 100), (x1, y1, 320, 50), 0)
-        pygame.draw.rect(screen, const.WHITE, (x1, y1, 320, 50), 1)
-        if player_1_name is "":
-            player_1_text = small_text.render("Player 1 Name", True, const.WHITE)
-        else:
-            player_1_text = small_text.render(player_1_name, True, const.WHITE)
-        screen.blit(player_1_text, [x1 + 10, y1 + 10])
-
-        # player 2
-        if (mouse[0] > x2) and (mouse[0] < x2 + 320) and (mouse[1] > y2) and (mouse[1] < y2 + 50):
-            if click[0] == 1:
-                ret = 0
-                blink = 0
-                while True:
-                    mouse = pygame.mouse.get_pos()
-                    click = pygame.mouse.get_pressed()
-
-                    color_x = random.randint(0, 4)
-                    color_y = random.randint(0, 1)
-                    disp_text(screen, "AIRHOCKEY", (scr_width / 2, 100), celeb_text, colors[color_x][color_y])
-
-                    # blink
-                    if blink:
-                        blink_ch = "|"
-                        blink = 0
-                    else:
-                        blink_ch = ""
-                        blink = 1
-
-                    if (mouse[0] < x2) or (mouse[0] > x2 + 320) or (mouse[1] < y2) or (mouse[1] > y2 + 50):
-                        if click[0] == 1:
-                            ret = 1
-                        if (mouse[0] > x1) and (mouse[0] < x1 + 320) and (mouse[1] > y1) and (mouse[1] < y1 + 50):
-                            if click[0] == 1:
-                                player_1_key = True
-                    if ret:
-                        break
-                    for event in pygame.event.get():
-                        if event.type == pygame.locals.QUIT:
-                            sys.exit()
-                        if event.type == pygame.locals.KEYDOWN:
-                            if event.unicode.isalpha() and not (len(player_2_name) > 8):
-                                player_2_name = "{0}{1}".format(player_2_name, event.unicode)
-                            elif event.key == pygame.locals.K_BACKSPACE:
-                                player_2_name = player_2_name[:-1]
-                            elif event.key == pygame.locals.K_RETURN:
-                                ret = 1
-                    pygame.draw.rect(screen, const.WHITE, (x2, y2, 320, 50), 0)
-                    if not (player_2_name is ""):
-                        player_2_text = small_text.render("{0}{1}".format(player_2_name, blink_ch), True, const.BLACK)
-                        screen.blit(player_2_text, [scr_width / 2 + 130, 180])
-                    pygame.display.flip()
-                    clock.tick(10)
-
-        pygame.display.update()
-        clock.tick(10)
+def _stop_music(was_paused):
+    if was_paused:
+        pygame.mixer.music.unpause()
+    pygame.mixer.music.stop()
